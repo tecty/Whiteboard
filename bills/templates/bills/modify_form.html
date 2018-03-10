@@ -1,0 +1,79 @@
+{%extends "base.html"%}
+{% block head_title %}{{bill.title}}- Modify Bill{%endblock%}
+
+
+{% block content %}
+    <div>
+
+        <h3><span class="fade">#{{bill.id}}</span> {{bill.title}}</h3>
+        <h6 >
+            <span class="fade">
+                {{bill.get_state_display}}
+            </span>
+            {%if bill.description %}
+               | {{bill.description}}
+            {% endif %}
+        </h6>
+
+
+        <h5>{{bill.initiate_user}} on {{bill.date}}</h5>
+        <br>
+
+
+    </div>
+
+    <div class="row">
+        <form class="col s12" action="{% url 'bills:modify_respond' bill.id%}" method="POST">
+            {% csrf_token%}
+            <div class="row">
+                {%for tr in bill.billtransation_set.all %}
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <div class="input-field col m6 s12">
+                        <input placeholder="Placeholder" name="tr{{tr.id}}" type="text" class="validate" value="{{tr.amount}}">
+                        <label for="tr{{tr.id}}">{{ tr.from_user }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="row">
+                <div class="col m3 s11">
+                    <button class="btn respond-btn" type="submit"
+                    name ="action_type" value="modify">Confirm Modify
+                    </button>
+                </div>
+                {% if bill.state == 'PD'%}
+                {# Switch between bill's state#}
+                    <div class="col m3 s11">
+                        <button class="btn respond-btn blue lighten-2"
+                         type="submit" name ="action_type" value="resume">
+                            Resume
+                        </button>
+                    </div>
+                {% elif bill.state == 'PC'%}
+                    <div class="col m3 s11">
+                        <button class="btn respond-btn blue lighten-2"
+                        type="submit" name ="action_type" value="suspend">
+                            Suspend
+                        </button>
+                    </div>
+                {% endif %}
+                <div class="col m3 s11">
+                    <button class="btn respond-btn red lighten-2"
+                     type="submit" name ="action_type" value="delete">
+                        Delete Bill
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <br>
+{% endblock %}
+
+{%block end_script %}
+  $(document).ready(function() {
+    $('select').material_select();
+  });
+{%endblock%}

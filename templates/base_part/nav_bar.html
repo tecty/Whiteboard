@@ -1,0 +1,14 @@
+<nav>
+  <div class="nav-wrapper container">
+    <a href="{%url 'index' %}" class="brand-logo">Whiteboard</a>
+    <ul id="nav-mobile" class="right hide-on-med-and-down" >
+      {% if user.is_authenticated %}
+        <li><a href="{% url 'accounts/profile'%}">{{user}}</a></li>
+        <li><a href="{% url 'account_logout' %}">Sign Out</a></li>
+      {% else %}
+        <li><a href="{% url 'account_login' %}">Sign In</a></li>
+        <li><a href="{% url 'account_signup' %}">Sign Up</a></li>
+      {% endif %}
+    </ul>
+  </div>
+</nav>

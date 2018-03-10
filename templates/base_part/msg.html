@@ -1,0 +1,17 @@
+{% if msg %}
+<div class="container">
+
+    <p>{{msg}}</p>
+</div>
+{% endif %}
+
+{% if messages %}
+
+  <script type="text/javascript">
+    window.onload= function(){
+      {% for message in messages %}
+        Materialize.toast('{{message}}', 4000); // 4000 is the duration of the toast
+      {% endfor %}    
+    }
+  </script>
+{% endif %}

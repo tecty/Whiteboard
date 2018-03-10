@@ -1,0 +1,92 @@
+{%extends "base.html"%}
+{% block head_title %}Bill{%endblock%}
+
+
+{% block content %}
+
+<h3>Processing Bills <a href="{% url 'bills:create' %}" class="btn">Issue a Bill</a></h3>
+  {% if bill_list %}
+    {%for bill in bill_list %}
+      <p>
+        <a href="{% url 'bills:detail' bill.id %}">
+          {{bill}}
+          {% if bill.state == 'PD'%}
+            (Suspend)
+          {% endif %}
+        </a>
+      </p>
+
+    {% endfor%}
+  {% else%}
+    <p>Currently Need to care no bill</p>
+  {%endif %}
+
+  {% if duty_list%}
+    <h4>You Should Pay</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Bill</th>
+          <th>Amount</th>
+          <th class="right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for duty in duty_list %}
+          <tr>
+            <td>{{duty.bill.id}}</td>
+            <td>
+              {{duty.bill.title}}
+            </td>
+            <td>
+              ${{duty.amount}}
+            </td>
+            <td class="right">
+              <a href="{% url 'bills:decline' duty.bill.id %}" class="btn red lighten-2">Decliend</a> <a href="{% url 'bills:pay' duty.bill.id %}" class="btn ">Pay</a>
+            </td>
+          </tr>
+        {% endfor%}
+      </tbody>
+    </table>
+  {% endif%}
+
+  {% if history_list%}
+    <h4>Paid</h4>
+    <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Bill</th>
+            <th>Payee</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for paid in history_list %}
+            <tr>
+              <td>{{paid.id}}</td>
+              <td>
+                <a href="{% url 'bills:detail' paid.bill.id %} ">
+                  {{paid.bill.title}}
+                </a>
+              </td>
+              <td>
+                {{paid.bill.initiate_user}}
+              </td>
+              <td>
+                ${%if paid.from_user == user %}-{% endif %}{{paid.amount}}
+              </td>
+            </tr>
+          {% endfor%}
+          <tr>
+            {# indent of balance line#}
+            <td></td><td></td>
+            <td>Balance</td>
+            <td>${{balance}}</td>
+          </tr>
+        </tbody>
+      </table>
+  {% endif%}
+
+{% endblock %}

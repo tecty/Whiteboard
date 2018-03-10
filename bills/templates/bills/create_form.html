@@ -1,0 +1,61 @@
+{%extends "base.html"%}
+{% block head_title %}Issue Bill{%endblock%}
+
+
+{% block content %}
+  <div class="row">
+    <form class="col s12" action="{% url 'bills:create_respond' %}" method="POST">
+      {% csrf_token%}
+
+
+      <div class="row">
+        <div class="input-field col s6">
+          <input id="title" name="title" type="text" class="validate">
+          <label for="title">Title</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="input-field col s12">
+          <input id="description" name="description" type="text" class="validate">
+          <label for="description">Description</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="input-field col s12">
+          <input id="total" name="total" type="text" class="validate">
+          <label for="total">Total Amount</label>
+        </div>
+      </div>
+        
+          {% if stackholder %}
+            {%for s in stackholder %}
+              <p>
+                <input type="checkbox" name="stackholder" id="s{{s.id}}" value="{{s.id}}" 
+                  {% if user == s %}
+                    checked = "checked"
+                  {% endif %}
+                />
+                <label for="s{{s.id}}">{{s}}</label>
+              </p>
+            {% endfor %}
+          {%endif %}
+        
+      <div class="row">
+        <div class="col m3 s11">
+          <button class="btn respond-btn"
+            type="submit">
+            Issue
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+
+        
+
+{%block end_script %}
+  $(document).ready(function() {
+    $('select').material_select();
+  });
+{%endblock%}

@@ -1,0 +1,18 @@
+{% extends 'base.html'%}
+
+
+{% block head_title %}{{user}} Profile{%endblock%}
+
+{%block content %}
+
+  <h3>
+    {{user}}
+  </h3>
+  <ul class="collection">
+
+      {# user can change E-mail here #}
+      <li class="collection-item"><a href="{% url 'account_email' %}">Change E-mail <i class="material-icons secondary-content">send</i></a></li>
+      <li class="collection-item"><a href="{% url 'bills:index' %}">Billing System <i class="material-icons secondary-content">send</i></a></li>
+    </ul>
+
+{% endblock%}

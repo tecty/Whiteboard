@@ -1,0 +1,38 @@
+{% extends 'base.html'%}
+{% block head_title %}Index{%endblock%}
+{% block body %}
+
+<div class="carousel carousel-slider center" data-indicators="true">
+    <div class="carousel-item red lighten-3 white-text" href="#one!">
+      <h1>Whiteboard</h1>
+      <h4 class="white-text">A site that help dormintory better.</h4>
+    </div>
+
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col s12 m4">
+            <div class="card blue-grey darken-1">
+                <div class="card-content white-text">
+                    <span class="card-title">Share Your Bill</span>
+                    <p>Help you reduce transations in bank, relief from checking and calculating bills.</p>
+                </div>
+                <div class="card-action">
+                    <a href="{% url 'bills:create'%}">Issue a Bill</a>
+                    <a href="{% url 'bills:index'%}">Your Bill</a>
+                </div>
+            </div>
+        </div>
+    </div>
+                    
+
+</div>
+
+
+{%endblock%}
+
+{% block end_script%}
+    {# script for activate carousel#}
+    $('.carousel.carousel-slider').carousel({fullWidth: true});
+{% endblock%}

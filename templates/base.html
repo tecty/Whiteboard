@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>{% block head_title %}{% endblock %} | {{ site_title|default:"Tecty's House" }}</title>
+        {% block extra_head %}
+        {% endblock %}
+        {%include 'base_part/head_ref.html'%}
+    </head>
+  <body>
+
+    {% include 'base_part/nav_bar.html' %}
+    {% include 'base_part/msg.html' %}
+    {% block body %}
+
+
+
+
+
+
+      <div class="container">
+
+        {% block content %}{% endblock %}
+      </div>
+
+    {% endblock %}
+
+    {% block extra_body %}{% endblock %}
+
+
+    {% include 'base_part/footer.html'%}
+    <script type="text/javascript">
+      {% block end_script%}{%endblock%}
+    </script>
+  </body>
+</html>

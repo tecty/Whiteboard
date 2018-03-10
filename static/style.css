@@ -1,0 +1,16 @@
+.fade{
+    color: #AAA;
+}
+.footer-bottom{
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+.respond-btn{
+    padding: 0rem 0.75rem;
+    margin:0.75rem 0rem;
+    width: 100%;
+}
+.footer-placeholder{
+    height: 80px;
+}

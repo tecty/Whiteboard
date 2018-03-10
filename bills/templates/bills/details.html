@@ -1,0 +1,44 @@
+{%extends "base.html"%}
+{% block head_title %}{{bill.title}}- Bill{%endblock%}
+
+
+{% block content %}
+    <div>
+
+        <h3><span class="fade">#{{bill.id}}</span> {{bill.title}}</h3>
+        <h6 >
+            <span class="fade">
+                {{bill.get_state_display}}
+            </span>
+            {%if bill.description %}
+               | {{bill.description}}
+            {% endif %}
+        </h6>
+    
+        
+        <h5>{{bill.initiate_user}} on {{bill.date}}</h5>
+
+
+        <table class="striped">
+            <tr>
+                <th>Name</th>
+                <th>State</th>
+                <th>Amount</th>
+            </tr>
+            {%for tr in bill.billtransation_set.all %}
+                <tr>
+                    <td>{{ tr.from_user }}</td>
+                    <td>{{tr.get_state_display}}</td>
+                    <td>{{tr.amount}}</td>
+                </tr>
+            {% endfor %}
+    
+    
+        </table>
+    </div>
+    <br>
+    <a href="{% url 'bills:index'%}" class="btn">Back to Bill</a>
+    {% if user == bill.initiate_user and bill.state != 'FN' %}
+        <a href="{% url 'bills:modify' bill.pk %}" class="btn red lighten-2">Modify this Bill</a>
+    {% endif%}
+{% endblock %}
