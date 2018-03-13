@@ -14,8 +14,8 @@ class Bill(models.Model):
     # set states, the initial state is Processing
     state = models.CharField(max_length = 2, 
         choices = (
-            ('PC','Processing'),
             ('PD','Pending'),
+            ('PC','Processing'),
             ('FN','Finished'),
         ),
         default = 'PC',
@@ -71,17 +71,7 @@ class Bill(models.Model):
         return self.state == 'PD'
 
 
-class Clearing(models.Model):
-    # the day start clearing
-    date = models.DateTimeField('Initiated Date')
 
-    # the bills that include in this clearing
-    # delete the flag bill would cancel the clearing
-    flag_bill = models.ForeignKey(Bill,on_delete = models.CASCADE)
-
-    def __str__(self):
-        # return the bill's information
-        return "clearing till bill #{}".format(self.flag_bill.id())
 
 class AbstractBaseTransation(models.Model):
     """Every unit of Transation """
@@ -145,9 +135,7 @@ class BaseTransation(AbstractBaseTransation):
     """A Transation that has nothing """
     pass
 
-class ClearingTransation(AbstractBaseTransation):
-    """Special transation that set all balance to 0"""
-    clearing = models.ForeignKey(Clearing,on_delete = models.CASCADE)
+
 
 class BillTransation(AbstractBaseTransation):
     """this would have the transtaion to link to a bill"""
