@@ -1,10 +1,11 @@
 from django.contrib.auth.models import User
 from django.db import models
 
-from .models import Bill,AbstractBaseTransation, BaseTransation,ClearingTransation,BaseTransation
+from .models import Bill,AbstractBaseTransation, BaseTransation,BaseTransation
 # decimal calculation support
 from decimal import Decimal
-
+# get the last settlement
+from settle.models import get_latest_tr_flag
 
 
 # public function to split the bill 
@@ -42,15 +43,27 @@ def cal_balance(User_id):
     # calculate the  user's balance 
     this_user = User.objects.get(pk = User_id)
 
+    # latest tr flag that settled 
+    settled_tr_flag = get_latest_tr_flag()
+
     # all the money he could get
     receive = AbstractBaseTransation.objects.\
-                filter(to_user = this_user,state = 'PD')\
-                .aggregate(models.Sum('amount'))['amount__sum'] 
+                filter(
+                    to_user = this_user,
+                    state = 'PD',
+                    # only get the transaction after settlement
+                    id__gt = settled_tr_flag 
+
+                ).aggregate(models.Sum('amount'))['amount__sum'] 
                 
     # all the money he should spend
     spend = AbstractBaseTransation.objects.\
-                filter(from_user = this_user,state = 'PD')\
-                .aggregate(models.Sum('amount'))['amount__sum']
+                filter(
+                    from_user = this_user,
+                    state = 'PD',
+                    # only get the transaction after settlement
+                    id__gt = settled_tr_flag 
+                ).aggregate(models.Sum('amount'))['amount__sum']
 
 
     # make them as Decimal
@@ -96,10 +109,4 @@ def quick_split(this_bill, user_list, total):
     # call the original function to append the bill
     split_bill(this_bill,split_dict)
 
-def get_last_clearing_bill():
-    # getting the biggest id on clearing transation 
-    ct = ClearingTransation.objects.order_by('-id')[0]
-    if not ct:
-        return 0
-    else:
-        return ct.bill.id
+

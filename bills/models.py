@@ -133,11 +133,11 @@ class AbstractBaseTransation(models.Model):
 
 class BaseTransation(AbstractBaseTransation):
     """A Transation that has nothing """
-    pass
 
 
 
 class BillTransation(AbstractBaseTransation):
     """this would have the transtaion to link to a bill"""
+
     bill = models.ForeignKey(Bill, on_delete = models.CASCADE)
 

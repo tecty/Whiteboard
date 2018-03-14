@@ -35,6 +35,8 @@ ALLOWED_HOSTS = ['localhost']
 INSTALLED_APPS = [
     # My apps build for this site
     'bills.apps.BillsConfig',
+    'settle.apps.SettleConfig',
+    
 
     # import the all auth to do login
     'allauth',
