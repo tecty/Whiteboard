@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils import timezone
 # decimal calculation support
@@ -208,6 +209,23 @@ def is_all_tr_finished():
         return False
     return True
 
+def count_tr(this_user):
+    # count the acutall transactions (exclude self payment)
+    return AbstractBaseTransation.objects.filter(
+            id__gt = get_latest_tr_flag())\
+        .filter(
+            Q(from_user = this_user) | Q(to_user = this_user)
+        ).exclude(Q(from_user = this_user) & Q(to_user = this_user) )\
+        .distinct()\
+        .aggregate(models.Count('id'))['id__count']
+        # because count is id, so the field name is id__count
+
+"""
+    Settle Part
+
+
+"""
+
 
 class Settle(models.Model):
     """ Settle is a model to make all balance back to 0."""
@@ -277,12 +295,37 @@ class Settle(models.Model):
         # save the new state to database
         self.save()
 
-def create_settle_transaction(user, init_user):
-    # create the settle transation form the user to init_user
-    pass
-    # if :
-    #     pass
-    # this_transaction = BaseTransation()
+    def create_settle_transaction(self,user, init_user):
+        # a helper function
+        # create the settle transation form the user to init_user
+
+        # calculate the user's balance
+        user_balance = cal_balance(user.id) 
+
+        if user_balance < 0:
+            # the actual that reset the balance 
+            actual_transaction= BaseTransation(
+                from_user = user,
+                to_user = init_user,
+                amount = (),
+                state='PD'
+            ).save()
+        else:
+            # reverse the transation :: very rare situation
+            actual_transaction= BaseTransation(
+                to_user = user,
+                from_user = init_user,
+                amount = (),
+                state='PD'
+            ).save()
+        
+        # create settle transation to link them together
+        self.settletransation_set.create(
+            reset_tr = actual_transaction,
+            service_fee = count_tr(user),
+
+        )
+
 
 # Create your models here.
 class SettleTransation(models.Model):
@@ -305,7 +348,7 @@ class SettleTransation(models.Model):
     # fee to using this system
     service_fee = models.DecimalField(max_digits = 7, decimal_places = 2)
     # penalty for late paymment 
-    penalty = models.DecimalField(max_digits = 7, decimal_places = 2)
+    penalty = models.DecimalField(max_digits = 7, decimal_places = 2,default = 0)
     
     def cal_penalty(self):
         pass

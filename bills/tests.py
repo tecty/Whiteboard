@@ -285,3 +285,19 @@ class SettleTest(TestCase):
         for tr in BillTransation.objects.all():
             tr.set_paid()
         self.assertEquals(is_all_tr_finished(),True)
+    
+    def test_count_transactions(self):
+        # count the first user's transactions 
+        # which should pay for service fee
+        self.assertEqual(
+            count_tr(self.user001),4
+        )
+        self.assertEqual(
+            count_tr(self.user002),4
+        )
+        self.assertEqual(
+            count_tr(self.user003),2
+        )
+        self.assertEqual(
+            count_tr(self.user004),2
+        )
