@@ -4,8 +4,6 @@ from django.db import models
 from .models import Bill,AbstractBaseTransation, BaseTransation,BaseTransation
 # decimal calculation support
 from decimal import Decimal
-# get the last settlement
-from settle.models import get_latest_tr_flag
 
 
 # public function to split the bill 
@@ -39,41 +37,6 @@ def split_bill(this_bill, portions):
     return this_bill
 
 
-def cal_balance(User_id):
-    # calculate the  user's balance 
-    this_user = User.objects.get(pk = User_id)
-
-    # latest tr flag that settled 
-    settled_tr_flag = get_latest_tr_flag()
-
-    # all the money he could get
-    receive = AbstractBaseTransation.objects.\
-                filter(
-                    to_user = this_user,
-                    state = 'PD',
-                    # only get the transaction after settlement
-                    id__gt = settled_tr_flag 
-
-                ).aggregate(models.Sum('amount'))['amount__sum'] 
-                
-    # all the money he should spend
-    spend = AbstractBaseTransation.objects.\
-                filter(
-                    from_user = this_user,
-                    state = 'PD',
-                    # only get the transaction after settlement
-                    id__gt = settled_tr_flag 
-                ).aggregate(models.Sum('amount'))['amount__sum']
-
-
-    # make them as Decimal
-    if not receive:
-        receive = Decimal(0)
-    if not spend:
-        spend = Decimal(0)
-
-    # return the balance it current has
-    return receive - spend
 
 
 def pay_bill(user, bill):

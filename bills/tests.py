@@ -2,8 +2,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from django.utils import timezone
+from .models import * 
 from .shortcut import *
-
 
 
 # Create your tests here.
@@ -198,3 +198,90 @@ class BillModelTests(TestCase):
         self.assertEqual(
             cal_balance(self.user_list[3].id),-5       
         )
+        
+class SettleTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        """Create a list of User to be test environment"""
+        cls.user001 =User.objects.create_user('u001',"u001@example.cn","tt")
+        cls.user002 =User.objects.create_user('u002',"u002@example.cn","tt")
+        cls.user003 =User.objects.create_user('u003',"u003@example.cn","tt")
+        cls.user004 =User.objects.create_user('u004',"u004@example.cn","tt")
+
+        cls.user_list = [
+            cls.user001,
+            cls.user002,
+            cls.user003,
+            cls.user004,
+        ]
+
+        # setting up some random bills and users
+        # all user pay u0 $20
+        cls.bill02 = Bill(title = 'bill02',description = '2', 
+            date = timezone.now(),initiate_user = cls.user_list[0]
+        )
+
+        split_bill(cls.bill02,{
+            cls.user_list[0]:20,
+            cls.user_list[1]:20,
+            cls.user_list[2]:20,
+            cls.user_list[3]:20,
+        })
+        # all user pay u1 $10
+        cls.bill01 = Bill(title = 'bill01',description = '1', 
+            date = timezone.now(),initiate_user = cls.user_list[1]
+        )
+
+        split_bill(cls.bill01,{
+            cls.user_list[0]:5,
+            cls.user_list[1]:5,
+            cls.user_list[2]:5,
+            cls.user_list[3]:5,
+        })
+
+        # after these two bill, we should get 50,-5,-25,-25
+        cls.settle = Settle(
+            start_date = timezone.now(),
+            initiate_user = cls.user001,
+            msg = "payment Detail",
+        )
+
+    def test_get_tr_flag(self):
+        # test whether it can get the latest tr flag from sys
+        # initial value should be 0
+        self.assertEquals(get_latest_tr_flag(),0)
+
+
+    def test_update_state(self):
+
+        self.assertEquals(self.settle.state, 'PD')
+        # update the settle state of this settle to waiting
+        # since the bill isn't cleared
+        self.settle.update_state()
+        self.assertEquals(self.settle.state, 'WT')
+        for tr in BillTransation.objects.all():
+            # all the bill should be paid 
+            tr.set_paid()
+            # update the state of the self.settle
+            self.settle.update_state()
+            
+            if is_all_tr_finished():
+                # all is done, it would transformm to pcs
+                self.assertEquals(self.settle.state, 'PC')
+            else:
+                # waiting some transation to be paid
+                self.assertEquals(self.settle.state, 'WT')
+    
+    def test_create_settle_transaction(self):
+        # test whether the auto generate transaction of settle is correct
+        # we should get 50,-5,-25,-25
+        for tr in BillTransation.objects.all():
+            # all user has paid their bill
+            tr.set_paid()
+        
+
+    def test_is_all_tr_finished(self):
+        self.assertEquals(is_all_tr_finished(),False)
+        for tr in BillTransation.objects.all():
+            tr.set_paid()
+        self.assertEquals(is_all_tr_finished(),True)

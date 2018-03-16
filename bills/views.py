@@ -12,9 +12,9 @@ from django.db.models import Q
 from django.views import generic
 
 # apps' model
-from .models import Bill,AbstractBaseTransation,BillTransation
+from .models import Bill,AbstractBaseTransation,BillTransation,cal_balance
 # shortcut to split_bill etc
-from .shortcut import split_bill,cal_balance,pay_bill,quick_split
+from .shortcut import split_bill,pay_bill,quick_split
 
 # User model from auth
 from django.contrib.auth.models import User
