@@ -2,12 +2,17 @@ from django.db import models
 from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils import timezone
+import datetime
 # decimal calculation support
 from decimal import Decimal
 def cal_balance(User_id):
-    # calculate the  user's balance 
-    this_user = User.objects.get(pk = User_id)
-
+    if type(User_id) == User:
+        this_user = User_id
+    elif type(User_id) == int:
+        # calculate the  user's balance 
+        this_user = User.objects.get(pk = User_id)
+    else:
+        raise TypeError("Only support user and int for cal_balance")
     # latest tr flag that settled 
     settled_tr_flag = get_latest_tr_flag()
 
@@ -40,6 +45,61 @@ def cal_balance(User_id):
     # return the balance it current has
     return receive - spend
 
+def get_latest_tr_flag():
+    # return the latest tr_flag to reduce the amount of
+    # database request
+    # require the latest Finished Settle bill
+    latest_settle = Settle.objects.filter(state = 'FN').\
+                        order_by('-id').first()
+    if latest_settle:
+        # this system has a settle return the latest tr_flag
+        return latest_settle.tr_flag
+    else:
+        # this system doesn't have a settle
+        return 0
+
+def get_unpaid_tr():
+    # return all the unfinished transation
+    return AbstractBaseTransation.objects.exclude(
+        # all the transation that include in this settle
+            state ='PD'
+        ).filter(
+            # only get the transaction after the previous settlement
+            id__gt = get_latest_tr_flag()
+        )
+
+def is_all_tr_finished():
+    # return true if all the transaction before now 
+    # is finished, else return false
+    if get_unpaid_tr():
+        return False
+    return True
+
+def count_tr(this_user):
+    # count the acutall transactions (exclude self payment)
+    return AbstractBaseTransation.objects.filter(
+            id__gt = get_latest_tr_flag())\
+        .filter(
+            Q(from_user = this_user) | Q(to_user = this_user)
+        ).exclude(Q(from_user = this_user) & Q(to_user = this_user) )\
+        .distinct()\
+        .aggregate(models.Count('id'))['id__count']
+        # because count is id, so the field name is id__count
+
+def check_settle_update():
+    # check all the not finished settlements' update
+    settle_set = Settle.objects.exclude(state = 'FN')
+    for s in settle_set:
+        # update all the settle need to update
+        s.update_state()
+
+def get_settle_tr(this_user):
+    # get the settle transaction of this user
+    return SettleTransaction.objects.\
+            order_by("-id").\
+            exclude(state = 'FN').\
+            filter(reset_tr__to_user = this_user).\
+            get()
 
 # Create your models here.
 class Bill(models.Model):
@@ -179,47 +239,6 @@ class BillTransation(AbstractBaseTransation):
 
     bill = models.ForeignKey(Bill, on_delete = models.CASCADE)
 
-
-def get_latest_tr_flag():
-    # return the latest tr_flag to reduce the amount of
-    # database request
-    # require the latest Finished Settle bill
-    latest_settle = Settle.objects.filter(state = 'FN').\
-                        order_by('-id').first()
-    if latest_settle:
-        # this system has a settle return the latest tr_flag
-        return latest_settle.tr_flag
-    else:
-        # this system doesn't have a settle
-        return 0
-
-def get_unpaid_tr():
-    # return all the unfinished transation
-    return AbstractBaseTransation.objects.exclude(
-            state ='PD'
-        ).filter(
-            # only get the transaction after settlement
-            id__gt = get_latest_tr_flag()
-        )
-
-def is_all_tr_finished():
-    # return true if all the transaction before now 
-    # is finished, else return false
-    if get_unpaid_tr():
-        return False
-    return True
-
-def count_tr(this_user):
-    # count the acutall transactions (exclude self payment)
-    return AbstractBaseTransation.objects.filter(
-            id__gt = get_latest_tr_flag())\
-        .filter(
-            Q(from_user = this_user) | Q(to_user = this_user)
-        ).exclude(Q(from_user = this_user) & Q(to_user = this_user) )\
-        .distinct()\
-        .aggregate(models.Count('id'))['id__count']
-        # because count is id, so the field name is id__count
-
 """
     Settle Part
 
@@ -230,7 +249,7 @@ def count_tr(this_user):
 class Settle(models.Model):
     """ Settle is a model to make all balance back to 0."""
     # start to make the settle
-    start_date = models.DateField();
+    start_date = models.DateTimeField();
     # even the transation is gone, it would still need to preserve this flag
     # to make the settle work for all the time
     tr_flag = models.ForeignKey(
@@ -274,20 +293,28 @@ class Settle(models.Model):
         return ret
 
     def update_state(self):
-        if self.start_date > timezone.now():
+        if timezone.now()<= self.start_date:
             # this settle is not started ye
             self.state = 'PD'
             self.save()
             return self
         # all the transation that include in this settle
-        tr_set = self.settletransation_set.all()
+        tr_set = self.settletransaction_set.all()
         if tr_set:
             # update state by a spearate function
             self.state = self.check_paid(tr_set)
         else:
             if is_all_tr_finished():
                 # start processing this bill
-                # TODO: set trs
+                # get all the user in the system except the initiate user
+                user_list = User.objects.exclude(
+                        id = self.initiate_user.id ,
+                    ) 
+                # setting all the transation should be made
+                for u in user_list:
+                    # setting up all the transactions 
+                    self.create_settle_transaction(u)
+                
                 self.state = 'PC'
             else:
                 # should wait for some unfinished transation
@@ -295,40 +322,36 @@ class Settle(models.Model):
         # save the new state to database
         self.save()
 
-    def create_settle_transaction(self,user, init_user):
+    def create_settle_transaction(self,user):
         # a helper function
-        # create the settle transation form the user to init_user
+        # create the settle transation form the user to initiate_user
 
-        # calculate the user's balance
-        user_balance = cal_balance(user.id) 
-
-        if user_balance < 0:
-            # the actual that reset the balance 
-            actual_transaction= BaseTransation(
-                from_user = user,
-                to_user = init_user,
-                amount = (),
-                state='PD'
-            ).save()
-        else:
-            # reverse the transation :: very rare situation
-            actual_transaction= BaseTransation(
-                to_user = user,
-                from_user = init_user,
-                amount = (),
-                state='PD'
-            ).save()
+        # the actual that reset the balance 
+        actual_transaction= BaseTransation(
+            from_user = self.initiate_user,
+            to_user = user,
+            amount = -cal_balance(user),
+            state='PD'
+        )
+ 
+        # save the acutal transation for both cases
+        actual_transaction.save()
         
         # create settle transation to link them together
-        self.settletransation_set.create(
+        # 
+        # Service fee is
+        # for every transaction, should pay 0.02 for each transaction
+        self.settletransaction_set.create(
             reset_tr = actual_transaction,
-            service_fee = count_tr(user),
-
+            service_fee = count_tr(user)*0.02,
         )
+
+        # save the status in to data base
+        self.save()
 
 
 # Create your models here.
-class SettleTransation(models.Model):
+class SettleTransaction(models.Model):
     """Special transation that set all balance to 0"""
     # overwrite the state
     
@@ -340,6 +363,12 @@ class SettleTransation(models.Model):
         ),
         default= 'UP',
     )
+
+    def __str__(self):
+        return str(self.reset_tr.from_user) +\
+                " pay to "+ str(self.reset_tr.to_user) + \
+                " with fee " +\
+                str(self.service_fee)
     # foreign key to this settlement
     settle = models.ForeignKey(Settle,on_delete = models.CASCADE)
     # foreign key to the reset transation
@@ -351,6 +380,53 @@ class SettleTransation(models.Model):
     penalty = models.DecimalField(max_digits = 7, decimal_places = 2,default = 0)
     
     def cal_penalty(self):
+        # calculate the due date
+        due_date = self.settle.start_date+ datetime.timedelta(days = 7)
+
+        # calculate the days that has delay 
+        delay_days = (timezone.now() - due_date).days
+
+        # must have paid the bill within 7 days, otherwise, calculate the penalty
+        if self.state != 'UP' or delay_days <0 :
+            # before the due time
+            # self.penalty has default value 0
+            return self.penalty
+        else:
+            # calculate the penalty
+            # penalty would start from 50 + should pay * (1+0.003)^(delay_days) 
+            penalty = 50 
+
+
+
+            # generate the penalty by delay days
+            penalty = (penalty+ self.service_fee+ self.reset_tr.amount) *\
+                        Decimal(format(
+                            pow ((1.003), (delay_days+1))
+                        , ".15g"))
+            return penalty - self.get_reset_amount() - self.service_fee
+
+    def get_reset_amount(self):
+        # remap the amount from reset transaction
+        return self.reset_tr.amount
+
+    def cal_total(self):
+        if self.state ==  'UP':
+            # the payer doesn't pay the settle yet
+            # summing up all the money user should pay
+            return self.get_reset_amount()+ self.service_fee + self.cal_penalty()
+        else:
+            # calculate the sum in current record
+            return self.get_reset_amount()+ self.service_fee + self.penalty
+
+    def set_paid(self):
+        # record the panalty calculation in to system
+        self.penalty = self.cal_penalty()
+        # set the transaction to be verify
+        self.state = "PD"
+        # save to database and refresh the settle's state
+        self.save()
+        self.settle.update_state()
+        return self
+
+    def set_verified(self, varify_user):
         pass
-    def set_service_fee(self):
-        self.service_fee = 0.02 

@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from django.utils import timezone
+import datetime
 from .models import * 
 from .shortcut import *
 
@@ -241,10 +242,12 @@ class SettleTest(TestCase):
 
         # after these two bill, we should get 50,-5,-25,-25
         cls.settle = Settle(
-            start_date = timezone.now(),
+            start_date = timezone.now()-datetime.timedelta(days = 1),
             initiate_user = cls.user001,
             msg = "payment Detail",
         )
+        # record the settle to databease
+        cls.settle.save()
 
     def test_get_tr_flag(self):
         # test whether it can get the latest tr flag from sys
@@ -271,14 +274,71 @@ class SettleTest(TestCase):
             else:
                 # waiting some transation to be paid
                 self.assertEquals(self.settle.state, 'WT')
-    
+
+    def test_check_settle_update(self):
+
+
+        self.assertEquals(self.settle.state, 'PD')
+        # update the settle state of this settle to waiting
+        # since the bill isn't cleared
+        check_settle_update()
+
+        # update the instance's state from database
+        self.settle = Settle.objects.get(id = self.settle.id )
+        self.assertEquals(self.settle.state, 'WT')
+        for tr in BillTransation.objects.all():
+            # all the bill should be paid 
+            tr.set_paid()
+            # update the state of the self.settle
+            check_settle_update()
+
+            # update the instance's state from database
+            self.settle = Settle.objects.get(id = self.settle.id )
+            
+            if is_all_tr_finished():
+                # all is done, it would transformm to pcs
+                self.assertEquals(self.settle.state, 'PC')
+            else:
+                # waiting some transation to be paid
+                self.assertEquals(self.settle.state, 'WT')
+
     def test_create_settle_transaction(self):
         # test whether the auto generate transaction of settle is correct
         # we should get 50,-5,-25,-25
         for tr in BillTransation.objects.all():
             # all user has paid their bill
             tr.set_paid()
-        
+
+        # global method to check the state of settle 
+        check_settle_update()
+
+        # update the instance's state from database
+        self.settle = Settle.objects.get(id = self.settle.id )
+        # all waiting are done, it would transformm to pcs
+        self.assertEquals(self.settle.state, 'PC')
+
+        # all user now should be reset to 0 
+        for u in self.user_list:
+            self.assertEquals(cal_balance(u),0)
+
+        # check whether the service fee is correctly calculated 
+        # admin user no need to pay transaction fee
+        # self.assertEqual(get_settle_tr(self.user001),0.08)
+        # should add one more transaction which reset the account
+        self.assertEqual(
+                get_settle_tr(self.user002).service_fee,
+                Decimal("0.10")
+            )
+        self.assertEqual(
+                get_settle_tr(self.user003).service_fee,
+                Decimal("0.06")
+            )
+        self.assertEqual(
+                get_settle_tr(self.user004).service_fee,
+                Decimal("0.06")
+            )
+
+
 
     def test_is_all_tr_finished(self):
         self.assertEquals(is_all_tr_finished(),False)
@@ -301,3 +361,88 @@ class SettleTest(TestCase):
         self.assertEqual(
             count_tr(self.user004),2
         )
+
+
+    def test_get_settle_tr(self):
+        # test whether the auto generate transaction of settle is correct
+        # we should get 50,-5,-25,-25
+        for tr in BillTransation.objects.all():
+            # all user has paid their bill
+            tr.set_paid()
+
+        # global method to check the state of settle 
+        check_settle_update()
+
+        # update the instance's state from database
+        self.settle = Settle.objects.get(id = self.settle.id )
+
+        # for tr in get_settle_tr(self.user001):
+            
+        #     print(tr)
+
+    def test_cal_total(self):
+        # we should test whether all the total amount is correct
+        # test whether the auto generate transaction of settle is correct
+        # we should get 50,-5,-25,-25
+        for tr in BillTransation.objects.all():
+            # all user has paid their bill
+            tr.set_paid()
+
+        # global method to check the state of settle 
+        check_settle_update()
+
+        # update the instance's state from database
+        self.settle = Settle.objects.get(id = self.settle.id )
+
+
+        # admin user don't need to pay (because he is actual reciever)
+        self.assertEqual(
+                get_settle_tr(self.user002).cal_total() ,
+                Decimal("5.10")
+            )
+        self.assertEqual(
+                get_settle_tr(self.user003).cal_total() ,
+                Decimal("25.06")
+            )
+        self.assertEqual(
+                get_settle_tr(self.user004).cal_total() ,
+                Decimal("25.06")
+            )
+
+    def test_cal_penaltys(self):
+        # we should test whether all the total amount is correct
+        # test whether the auto generate transaction of settle is correct
+        # we should get 50,-5,-25,-25
+        self.settle.start_date =timezone.now()-datetime.timedelta(days = 7)
+        self.settle.save() 
+        for tr in BillTransation.objects.all():
+            # all user has paid their bill
+            tr.set_paid()
+
+        # global method to check the state of settle 
+        check_settle_update()
+
+        # update the instance's state from database
+        self.settle = Settle.objects.get(id = self.settle.id )
+
+        # admin user don't need to pay (because he is actual reciever)
+        # undirect cal penalty 
+        # by paying it and call its record
+        get_settle_tr(self.user002).set_paid()
+        get_settle_tr(self.user003).set_paid()
+        get_settle_tr(self.user004).set_paid()
+
+
+        # try to proof the calculation is correct
+        self.assertAlmostEqual(
+                get_settle_tr(self.user002).cal_total() ,
+                Decimal("55.27")
+            )
+        self.assertAlmostEqual(
+                get_settle_tr(self.user003).cal_total() ,
+                Decimal("75.29")
+            )
+        self.assertAlmostEqual(
+                get_settle_tr(self.user004).cal_total() ,
+                Decimal("75.29")
+            )
