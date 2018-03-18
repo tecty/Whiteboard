@@ -37,7 +37,10 @@
           <tr>
             <td>{{duty.bill.id}}</td>
             <td>
-              {{duty.bill.title}}
+
+                <a href="{% url 'bills:detail' duty.bill.id %}">
+                    {{duty.bill.title}}
+                  </a>
             </td>
             <td>
               ${{duty.amount}}

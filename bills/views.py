@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.views import generic
 
 # apps' model
-from .models import Bill,AbstractBaseTransation,BillTransation,cal_balance
+from .models import Bill,AbstractBaseTransation,BillTransation,cal_balance,check_settle_update
 # shortcut to split_bill etc
 from .shortcut import split_bill,pay_bill,quick_split
 
@@ -35,6 +35,11 @@ class IndexView(LoginRequiredMixin,generic.ListView ):
         self is payee only ignore FN
         self is not payee only want PC
         """
+        
+        # update the settlement if anyone view this page
+        check_settle_update()
+
+
         return Bill.objects.filter(
                 Q(initiate_user = self.request.user)&
                 ~Q(state = 'FN')

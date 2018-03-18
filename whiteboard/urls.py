@@ -25,6 +25,7 @@ urlpatterns = [
 
     # bill app
     path('bills/', include('bills.urls')),
+    path('settle/', include('settle.urls')),
 
     # import all auth
     url(r'^accounts/', include('allauth.urls')),

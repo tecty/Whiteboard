@@ -14,5 +14,6 @@ urlpatterns = [
     path('decline/<int:bill_id>',views.decline_bill_request,name = 'decline'),
     path('modify/<int:bill_id>',views.modify_bill,name = 'modify'),
     path('modify_request/<int:bill_id>',views.modify_bill_request,name = 'modify_respond'),
+    
 
 ]

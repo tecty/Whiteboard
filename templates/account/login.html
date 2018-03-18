@@ -51,3 +51,8 @@ for a {{ site_name }} account and sign in below:{% endblocktrans %}</p>
 </form>
 
 {% endblock %}
+{%block end_script %}
+  $(document).ready(function() {
+    $('select').material_select();
+  });
+{%endblock%}

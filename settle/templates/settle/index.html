@@ -1,0 +1,25 @@
+{%extends "base.html"%}
+{% block head_title %}Settle{%endblock%}
+
+
+{% block content %}
+
+<h3>Processing Settlement</h3>
+  {% if settle_list %}
+    {%for settle in settle_list %}
+      <p>
+        <a href="{% url 'settle:detail' settle.id %}">
+          {{settle}}
+          {% if settle.state == 'PD'%}
+            (Suspend)
+          {% endif %}
+        </a>
+      </p>
+
+    {% endfor%}
+  {% else%}
+    <p>Currently Need to care no bill</p>
+  {%endif %}
+{%if my_settle%}
+
+{% endblock %}

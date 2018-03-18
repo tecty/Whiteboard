@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 import datetime
 # decimal calculation support
-from decimal import Decimal
+from decimal import Decimal,getcontext
 def cal_balance(User_id):
     if type(User_id) == User:
         this_user = User_id
@@ -60,7 +60,7 @@ def get_latest_tr_flag():
 
 def get_unpaid_tr():
     # return all the unfinished transation
-    return AbstractBaseTransation.objects.exclude(
+    return BillTransation.objects.exclude(
         # all the transation that include in this settle
             state ='PD'
         ).filter(
@@ -94,12 +94,18 @@ def check_settle_update():
         s.update_state()
 
 def get_settle_tr(this_user):
-    # get the settle transaction of this user
-    return SettleTransaction.objects.\
-            order_by("-id").\
-            exclude(state = 'FN').\
-            filter(reset_tr__to_user = this_user).\
-            get()
+    ret = None
+    try:
+        # get the settle transaction of this user
+        ret = SettleTransaction.objects.\
+                order_by("-id").\
+                exclude(state = 'FN').\
+                filter(reset_tr__to_user = this_user).\
+                get()
+    except Exception as identifier:
+        # unkown error when no settlement in the system
+        pass
+    return ret
 
 # Create your models here.
 class Bill(models.Model):
@@ -413,7 +419,8 @@ class SettleTransaction(models.Model):
         if self.state ==  'UP':
             # the payer doesn't pay the settle yet
             # summing up all the money user should pay
-            return self.get_reset_amount()+ self.service_fee + self.cal_penalty()
+            return (self.get_reset_amount()+ self.service_fee + self.cal_penalty()).quantize(Decimal('0.00'))
+
         else:
             # calculate the sum in current record
             return self.get_reset_amount()+ self.service_fee + self.penalty
