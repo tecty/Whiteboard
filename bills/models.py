@@ -429,4 +429,16 @@ class SettleTransaction(models.Model):
         return self
 
     def set_verified(self, varify_user):
-        pass
+        if varify_user == self.settle.initiate_user:
+            # refresh the state of this transaction
+            # save it to database
+            self.state = "VD"
+            self.save()
+
+            # refresh of this settle
+            self.settle.update_state()
+            return True
+
+        else:
+            # permission deny
+            return False

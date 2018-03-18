@@ -446,3 +446,54 @@ class SettleTest(TestCase):
                 get_settle_tr(self.user004).cal_total() ,
                 Decimal("75.29")
             )
+    def test_cal_penaltys(self):
+        # we should test whether all the total amount is correct
+        # test whether the auto generate transaction of settle is correct
+        # we should get 50,-5,-25,-25
+        self.settle.start_date =timezone.now()-datetime.timedelta(days = 7)
+        self.settle.save() 
+        for tr in BillTransation.objects.all():
+            # all user has paid their bill
+            tr.set_paid()
+
+        # global method to check the state of settle 
+        check_settle_update()
+
+
+        # admin user don't need to pay (because he is actual reciever)
+        # undirect cal penalty 
+        # by paying it and call its record
+        get_settle_tr(self.user002).set_paid()
+        get_settle_tr(self.user003).set_paid()
+        get_settle_tr(self.user004).set_paid()
+        
+        # invalid verify
+        self.assertEqual(
+            get_settle_tr(self.user002).\
+            set_verified(self.user002)
+            ,False
+        )
+        
+        # try to varify all the bill and check the state is updated
+        self.assertEqual(
+            get_settle_tr(self.user002).\
+            set_verified(self.user001)
+            ,True
+        )
+        self.assertEqual(
+            get_settle_tr(self.user003).\
+            set_verified(self.user001)
+            ,True
+        )
+        self.assertEqual(
+            get_settle_tr(self.user004).\
+            set_verified(self.user001)
+            ,True
+        )
+        
+        # update the instance's state from database
+        self.settle = Settle.objects.get(id = self.settle.id )
+        
+        # check whether the settle is set to finished
+        self.assertEqual(self.settle.state,"FN")
+        
