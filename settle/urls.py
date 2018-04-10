@@ -10,6 +10,7 @@ urlpatterns = [
     path('create',views.create,name='create'),
     path('create_respond',views.create_respond,name='create_respond'),
     path('detail/<int:pk>',views.details,name = 'detail'),
+    path('pay/<int:pk>',views.pay_settle,name = 'pay'),
     # path('pay/<int:bill_id>',views.pay_bill_request,name = 'pay'),
     # path('decline/<int:bill_id>',views.decline_bill_request,name = 'decline'),
     # path('modify/<int:bill_id>',views.modify_bill,name = 'modify'),

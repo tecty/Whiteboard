@@ -281,7 +281,7 @@ class Settle(models.Model):
     )
 
     def __str__(self):
-        return "Settle on "+ str(self.start_date )
+        return str(self.start_date.date())+" Settlement"
 
 
     def check_paid(self,tr_set):
@@ -364,8 +364,8 @@ class SettleTransaction(models.Model):
     state = models.CharField(max_length = 2, 
         choices = (
             ('UP','Unpaid'),
-            ('PD','Paid-Verifying'),
-            ('VD','Verified'),
+            ('PD','Verifying'),
+            ('VD','Paid'),
         ),
         default= 'UP',
     )

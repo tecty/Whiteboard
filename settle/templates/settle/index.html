@@ -20,6 +20,10 @@
   {% else%}
     <p>Currently Need to care no bill</p>
   {%endif %}
-{%if my_settle%}
+  
+  {% if my_setttle %}
+    {# current settlement I need to care about #}
+    {my_setttle}
+  {% endif %}
 
 {% endblock %}

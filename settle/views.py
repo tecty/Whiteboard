@@ -11,9 +11,6 @@ from django.views import generic
 from django.contrib import messages
 
 
-
-
-
 # Create your views here.
 class IndexView(LoginRequiredMixin,generic.ListView ):
     template_name = 'settle/index.html'
@@ -32,7 +29,16 @@ def details(request, pk):
     context = {}
     context["settle"] =Settle.objects.get(pk = pk)  
     context['unpaid_list'] = get_unpaid_tr()
-    return render(request, 'settle/details.html',context)
+    if request.user.is_superuser:
+        # only the super upser can have a total view of the settlement
+        context["settle_tr"] =Settle.objects.get(pk = pk).settletransaction_set.all()
+        return render(request, 'settle/detail_admin.html',context)
+    else :
+        # the login user is not a super, return the normal page to pay
+        # fetch the transaction information
+        context['my_settle_tr'] = Settle.objects.get(pk = pk).\
+            settletransaction_set.get(reset_tr__to_user = request.user)
+        return render(request, "settle/detail_user.html",context)
 
 @login_required
 def tr_details(request,pk):
@@ -43,7 +49,10 @@ def tr_details(request,pk):
 
 @login_required
 def create(request):
-    return render(request,'settle/create_form.html')
+    if request.user.is_superuser:
+        return render(request,'settle/create_form.html')
+    else:
+        return Http404(request, "Must be Admin to create Settle.")
 
 @login_required
 def create_respond(request):
@@ -68,3 +77,18 @@ def create_respond(request):
             request,'settle/create_form.html'
         )
     return HttpResponseRedirect(reverse('settle:detail', args=(settle.id,)))
+
+
+@login_required
+def pay_settle(request, pk):
+    try:
+        my_tr =Settle.objects.get(pk = pk).settletransaction_set.\
+                    get(reset_tr__to_user = request.user)
+        my_tr.set_paid()
+    except Exception as e:
+        # catch all the exception 
+        raise Http404(request, 
+            "Couldn't find correspond transaction or settlemment.")
+
+    # redirect to the detail's page
+    return HttpResponseRedirect(reverse('settle:detail',args=(pk,)))

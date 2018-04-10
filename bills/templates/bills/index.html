@@ -46,7 +46,8 @@
               ${{duty.amount}}
             </td>
             <td class="right">
-              <a href="{% url 'bills:decline' duty.bill.id %}" class="btn red lighten-2">Decliend</a> <a href="{% url 'bills:pay' duty.bill.id %}" class="btn ">Pay</a>
+              <a href="{% url 'bills:decline' duty.bill.id %}" class="btn red lighten-2">Decliend</a> 
+              <a href="{% url 'bills:pay' duty.bill.id %}" class="btn ">Pay</a>
             </td>
           </tr>
         {% endfor%}
