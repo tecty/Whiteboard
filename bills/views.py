@@ -55,11 +55,14 @@ class IndexView(LoginRequiredMixin,generic.ListView ):
         # all the activity that associate with this user
         # exclude self payment
         context['history_list'] = BillTransation.objects.\
-                filter(pk__gt = get_latest_tr_flag().id).\
                 filter(Q(from_user = self.request.user)|Q(to_user = self.request.user)).\
                 exclude(from_user = self.request.user, to_user = self.request.user).\
                 filter(state = 'PD').\
                 order_by('id')
+        if get_latest_tr_flag():
+            # if there is a transaction flag, it add one 
+            context['history_list']= context['history_list'].\
+                filter(pk__gt = get_latest_tr_flag().id)
 
         context['balance'] = cal_balance(self.request.user.id)
         return context

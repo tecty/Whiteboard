@@ -27,7 +27,7 @@ SECRET_KEY = '1)tfit9qubkdmo)sf7)e@%xe5mn8ah+%jbdsnj-&ms83sa1&x('
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost']
+ALLOWED_HOSTS = ['localhost',"whiteboard.com",]
 
 
 # Application definition
