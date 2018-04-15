@@ -13,12 +13,6 @@ def cal_balance(User_id):
         this_user = User.objects.get(pk = User_id)
     else:
         raise TypeError("Only support user and int for cal_balance")
-    # latest tr flag that settled 
-    """
-        HERE IS SHIT
-        settled_tr_flag = get_latest_tr_flag().id
-    """ 
-    settled_tr_flag = 0
     
 
     # all the money he could get
@@ -26,9 +20,6 @@ def cal_balance(User_id):
                 filter(
                     to_user = this_user,
                     state = 'PD',
-                    # only get the transaction after settlement
-                    id__gt = settled_tr_flag 
-
                 ).aggregate(models.Sum('amount'))['amount__sum'] 
                 
     # all the money he should spend
@@ -36,8 +27,6 @@ def cal_balance(User_id):
                 filter(
                     from_user = this_user,
                     state = 'PD',
-                    # only get the transaction after settlement
-                    id__gt = settled_tr_flag 
                 ).aggregate(models.Sum('amount'))['amount__sum']
 
 

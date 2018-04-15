@@ -27,7 +27,8 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Bill</th>
+          <th style="width: 50%">Bill</th>
+          <th>By</th>
           <th>Amount</th>
           <th class="right">Actions</th>
         </tr>
@@ -38,9 +39,15 @@
             <td>{{duty.bill.id}}</td>
             <td>
 
-                <a href="{% url 'bills:detail' duty.bill.id %}">
-                    {{duty.bill.title}}
-                  </a>
+              <a href="{% url 'bills:detail' duty.bill.id %}">
+                {{duty.bill.title}}
+                {% if duty.bill.description %}
+                  | <span class="fade">{{duty.bill.description}}</span>
+                {%endif%}
+              </a>
+            </td>
+            <td>
+              {{duty.bill.initiate_user}}
             </td>
             <td>
               ${{duty.amount}}
