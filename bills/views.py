@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.views import generic
 
 # apps' model
-from .models import Bill,AbstractBaseTransation,BillTransation,cal_balance,check_settle_update
+from .models import Bill,AbstractBaseTransation,BillTransation,cal_balance,check_settle_update,get_latest_tr_flag
 # shortcut to split_bill etc
 from .shortcut import split_bill,pay_bill,quick_split
 
@@ -55,6 +55,7 @@ class IndexView(LoginRequiredMixin,generic.ListView ):
         # all the activity that associate with this user
         # exclude self payment
         context['history_list'] = BillTransation.objects.\
+                filter(pk__gt = get_latest_tr_flag().id).\
                 filter(Q(from_user = self.request.user)|Q(to_user = self.request.user)).\
                 exclude(from_user = self.request.user, to_user = self.request.user).\
                 filter(state = 'PD').\

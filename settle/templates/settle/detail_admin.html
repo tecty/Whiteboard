@@ -25,12 +25,19 @@
                 <th>Name</th>
                 <th>State</th>
                 <th>Amount</th>
+                <th>Action</th>
             </tr>
             {%for tr in settle.settletransaction_set.all %}
                 <tr>
                     <td>{{ tr.reset_tr.to_user }}</td>
                     <td>{{tr.get_state_display}}</td>
                     <td>${{tr.cal_total}}</td>
+                    <td>
+                        {% if tr.state == 'PD' %}
+                            <a href="{% url 'settle:decline' tr.id %}" class="btn red lighten-2">Decliend</a> 
+                            <a href="{% url 'settle:verified' tr.id %}" class="btn ">Verified</a>
+                        {% endif%}
+                    </td>
                 </tr>
             {% endfor %}
         </table>
@@ -63,6 +70,6 @@
 </div>
 <br>
 <a href="{% url 'settle:index'%}" class="btn">Back to Settlement</a>
-
+{% include "settle/part/detail-statement.html"%}
 
 {% endblock %}

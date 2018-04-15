@@ -3,6 +3,7 @@ from bills.models import Settle, SettleTransaction,get_settle_tr,get_unpaid_tr
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseRedirect,HttpResponse,Http404
+from django.db.models import Sum
 from django.urls import reverse
 import datetime
 # view models
@@ -28,7 +29,11 @@ class IndexView(LoginRequiredMixin,generic.ListView ):
 def details(request, pk):
     context = {}
     context["settle"] =Settle.objects.get(pk = pk)  
-    context['unpaid_list'] = get_unpaid_tr()
+    context['unpaid_list'] = context['settle'].get_unpaid_tr()
+    # get the responsible_tr for this user
+    context['responsible_tr'] = context['settle'].\
+        get_responsible_tr(request.user)
+
     if request.user.is_superuser:
         # only the super upser can have a total view of the settlement
         context["settle_tr"] =Settle.objects.get(pk = pk).settletransaction_set.all()
@@ -92,3 +97,54 @@ def pay_settle(request, pk):
 
     # redirect to the detail's page
     return HttpResponseRedirect(reverse('settle:detail',args=(pk,)))
+
+@login_required
+def verify_tr_request(request,pk):
+    st = get_object_or_404(SettleTransaction,pk = pk )
+    st.set_verified(request.user)
+    return HttpResponseRedirect(reverse('settle:detail',args=(st.settle.id,)))
+
+@login_required
+def decline_tr_request(request,pk):
+    st = get_object_or_404(SettleTransaction,pk = pk )
+    st.set_unpaid()
+    return HttpResponseRedirect(reverse('settle:detail',args=(st.settle.id,)))
+
+@login_required
+def print_outgo(request,pk):
+    # the settle_tr that need to print
+    settle = get_object_or_404(Settle,pk = pk )
+    # the context for this printable page
+    context = {}
+    # get the responsible_tr for this user
+    context['responsible_tr'] = settle.\
+        get_responsible_tr(request.user ,"outgo")
+    # outgo doesn't have specific method for that
+    context['subtotal'] = -context['responsible_tr'].\
+        aggregate(Sum('amount'))['amount__sum']
+        
+    if request.user != settle.initiate_user:
+        # initiate user don't have  this
+        context['my_settle_tr'] = settle.settletransaction_set.\
+            get(reset_tr__to_user = request.user)
+        # calculate the total fe
+        context['total'] =context['subtotal'] \
+            - context['my_settle_tr'] .cal_penalty() \
+            - context['my_settle_tr'].service_fee
+
+    return render(request,
+        "settle/part/outgo_statement.html",context=context)
+@login_required
+def print_tr(request,pk):
+    # the settle_tr that need to print
+    settle = get_object_or_404(Settle,pk = pk )
+    # the context for this printable page
+    context = {}
+    # get the responsible_tr for this user
+    context['responsible_tr'] = settle.\
+        get_responsible_tr(request.user ,"outgo")
+    if request.user != settle.initiate_user:
+        context['my_settle_tr'] = settle.settletransaction_set.\
+            get(reset_tr__to_user = request.user)
+    return render(request,
+        "settle/part/transaction_statement.html",context=context)

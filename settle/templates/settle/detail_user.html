@@ -6,7 +6,14 @@
 
 <div>
 
-    <h1>{{my_settle_tr.get_state_display}}</h1>
+    <h1>
+        {% if settle.state == "PC" %}
+            {{my_settle_tr.get_state_display}}
+        {% else %}
+            {{settle.get_state_display}}
+        {% endif %}
+    </h1>
+
     <h3>
     Total: $ {{my_settle_tr.cal_total}}
 
@@ -49,12 +56,10 @@
         </table>
     {% endif%}
 
-    {% if responding_tr %}
-    
-    {% endif%}
 </div>
 <br>
 <a href="{% url 'settle:index'%}" class="btn">Back to Settlement</a>
+{% include "settle/part/detail-statement.html"%}
 
 
 {% endblock %}

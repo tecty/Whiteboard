@@ -11,8 +11,8 @@ urlpatterns = [
     path('create_respond',views.create_respond,name='create_respond'),
     path('detail/<int:pk>',views.details,name = 'detail'),
     path('pay/<int:pk>',views.pay_settle,name = 'pay'),
-    # path('pay/<int:bill_id>',views.pay_bill_request,name = 'pay'),
-    # path('decline/<int:bill_id>',views.decline_bill_request,name = 'decline'),
-    # path('modify/<int:bill_id>',views.modify_bill,name = 'modify'),
-    # path('modify_request/<int:bill_id>',views.modify_bill_request,name = 'modify_respond'),
+    path('verified/<int:pk>',views.verify_tr_request,name = 'verified'),
+    path('decline/<int:pk>',views.decline_tr_request,name = 'decline'),
+    path('print_outgo/<int:pk>',views.print_outgo,name = 'print_outgo'),
+    path('print_tr/<int:pk>',views.print_tr,name = 'print_tr'),
 ]

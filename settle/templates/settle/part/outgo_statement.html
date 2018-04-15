@@ -1,0 +1,55 @@
+<table>
+    <thead>
+        <tr>
+        <th>#</th>
+        <th style="width: 60%">Bill</th>
+        <th>Payee</th>
+        <th>Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for paid in responsible_tr %}
+            <tr>
+                <td>{{paid.id}}</td>
+                <td>
+                <a href="{% url 'bills:detail' paid.bill.id %} ">
+                    {{paid.bill.title}}
+                </a>
+                </td>
+                <td>
+                {{paid.bill.initiate_user}}
+                </td>
+                <td>
+                ${%if paid.from_user == user %}-{% endif %}{{paid.amount}}
+                </td>
+            </tr>
+        {% endfor%}
+        <tr>
+            {# indent of subtotal line#}
+            <td></td><td></td>
+            <td>Subtotal</td>
+            <td>${{subtotal}}</td>
+        </tr>
+        {% if settle.initiate_user != user%}
+            {# Initia user doesn't have this part #}
+            <tr>
+                {# indent of service fee line#}
+                <td></td><td></td>
+                <td>Service Fee</td>
+                <td>$-{{my_settle_tr.service_fee}}</td>
+            </tr>
+            <tr>
+                {# indent of late payment penalty line#}
+                <td></td><td></td>
+                <td>Late Payment Penalty</td>
+                <td>$-{{ my_settle_tr.cal_penalty}}</td>
+            </tr>
+            <tr>
+                {# indent of total line#}
+                <td></td><td></td>
+                <td>Total Spent</td>
+                <td>${{total}}</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>

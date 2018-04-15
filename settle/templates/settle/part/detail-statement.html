@@ -1,0 +1,9 @@
+<div>
+    <h3>Transaction Statement <a href="{% url 'settle:index'%}" class="btn">Printable Outgo Statement</a></h3>
+    
+
+    {% include "settle/part/transaction_statement.html"%}
+    
+    <a href="{% url 'settle:print_outgo' settle.id%}" class="btn">Printable Outgo Statement</a>
+    <a href="{% url 'settle:print_tr' settle.id%}" class="btn">Printable Transaction Statement</a>
+</div>

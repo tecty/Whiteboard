@@ -14,7 +14,12 @@ def cal_balance(User_id):
     else:
         raise TypeError("Only support user and int for cal_balance")
     # latest tr flag that settled 
-    settled_tr_flag = get_latest_tr_flag()
+    """
+        HERE IS SHIT
+        settled_tr_flag = get_latest_tr_flag().id
+    """ 
+    settled_tr_flag = 0
+    
 
     # all the money he could get
     receive = AbstractBaseTransation.objects.\
@@ -58,8 +63,16 @@ def get_latest_tr_flag():
         # this system doesn't have a settle
         return 0
 
-def get_unpaid_tr():
-    # return all the unfinished transation
+def get_unpaid_tr(id_range = None):
+    if id_range:
+        # all the bills that in the range also is not paid
+        return BillTransation.objects.filter(
+            id__gte = id_range[0],
+            id__lte = id_range[1]
+        ).exclude(state = 'PD')
+
+    # else use the old way to provide unpaid tr.
+    # return all the unfinished transation between the id range
     return BillTransation.objects.exclude(
         # all the transation that include in this settle
             state ='PD'
@@ -68,12 +81,6 @@ def get_unpaid_tr():
             id__gt = get_latest_tr_flag()
         )
 
-def is_all_tr_finished():
-    # return true if all the transaction before now 
-    # is finished, else return false
-    if get_unpaid_tr():
-        return False
-    return True
 
 def count_tr(this_user):
     # count the acutall transactions (exclude self payment)
@@ -299,6 +306,10 @@ class Settle(models.Model):
         return ret
 
     def update_state(self):
+        if self.state =='FN':
+            # do nothing to keep this settle's state
+            return 
+            
         if timezone.now()<= self.start_date:
             # this settle is not started ye
             self.state = 'PD'
@@ -309,8 +320,16 @@ class Settle(models.Model):
         if tr_set:
             # update state by a spearate function
             self.state = self.check_paid(tr_set)
+            if self.state =='FN':
+                # if here's state == 'Finished'
+                # then here is the first time this settle has finished 
+                # settup the trflag
+                # print(self.get_responsible_tr_range()[1])
+                self.tr_flag = AbstractBaseTransation.\
+                    objects.get(id = self.get_responsible_tr_range()[1])
+            
         else:
-            if is_all_tr_finished():
+            if self.is_all_tr_finished():
                 # start processing this bill
                 # get all the user in the system except the initiate user
                 user_list = User.objects.exclude(
@@ -327,6 +346,60 @@ class Settle(models.Model):
                 self.state = 'WT'
         # save the new state to database
         self.save()
+
+    def get_unpaid_tr(self):
+        # remapping the public function that takes the settles attribute
+        return get_unpaid_tr(self.get_responsible_tr_range())
+    def is_all_tr_finished(self):
+        # return true if all the transaction before now 
+        # is finished, else return false
+        if self.get_unpaid_tr():
+            return False
+        return True
+    def get_responsible_tr(self,this_user,type = 'transaction'):
+        res_range = self.get_responsible_tr_range()
+        # return the transaction that in the range
+        if type =='transaction':
+            return BillTransation.objects.filter(
+                id__gte = res_range[0],id__lte = res_range[1]).filter(
+                Q(from_user = this_user) | Q(to_user = this_user)
+                ).exclude(Q(from_user = this_user) & Q(to_user = this_user) )\
+                .distinct()
+        elif type== 'outgo':
+            # only care about howmuch it has paid
+            return BillTransation.objects.filter(
+                id__gte = res_range[0],
+                id__lte = res_range[1],
+                from_user = this_user
+            )
+
+    def get_responsible_tr_range (self):
+        # return the transactionset that this settlement need to care
+        # about
+        settle_set = Settle.objects.order_by("-id")
+        
+        res_tr = [0,0]
+        if settle_set.count()>=2:
+            # the previous trflag must not null
+            res_tr[0] = settle_set[1].tr_flag+1
+            # refresh the default value of res_tr
+            res_tr[1] = res_tr[0]
+
+            # the next one would be decided by the last bill by the due date
+            last_res_bill = Bill.objects.filter(date__lt = settle_set[1].start_date).\
+                order_by("-id").first()
+            if last_res_bill:
+                res_tr[1] = last_res_bill.billtransation_set.order_by("-id").\
+                    first().id
+        else:
+            # only has one settle in the set 
+            # the next one would be decided by the last bill by the due date
+            last_res_bill = Bill.objects.filter(date__lt = settle_set[0].start_date).\
+                order_by("-id").first()
+            if last_res_bill:
+                res_tr[1] = last_res_bill.billtransation_set.order_by("-id").\
+                    first().id
+        return res_tr
 
     def create_settle_transaction(self,user):
         # a helper function
@@ -434,7 +507,15 @@ class SettleTransaction(models.Model):
         self.save()
         self.settle.update_state()
         return self
-
+    def set_unpaid(self):
+        # record the panalty calculation in to system
+        self.penalty = self.cal_penalty()
+        # set the transaction to be verify
+        self.state = "UP"
+        # save to database and refresh the settle's state
+        self.save()
+        self.settle.update_state()
+        return self
     def set_verified(self, varify_user):
         if varify_user == self.settle.initiate_user:
             # refresh the state of this transaction

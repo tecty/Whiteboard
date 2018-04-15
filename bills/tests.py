@@ -219,7 +219,8 @@ class SettleTest(TestCase):
         # setting up some random bills and users
         # all user pay u0 $20
         cls.bill02 = Bill(title = 'bill02',description = '2', 
-            date = timezone.now(),initiate_user = cls.user_list[0]
+            date = timezone.now()-datetime.timedelta(days = 2),
+            initiate_user = cls.user_list[0]
         )
 
         split_bill(cls.bill02,{
@@ -230,7 +231,8 @@ class SettleTest(TestCase):
         })
         # all user pay u1 $10
         cls.bill01 = Bill(title = 'bill01',description = '1', 
-            date = timezone.now(),initiate_user = cls.user_list[1]
+            date = timezone.now()-datetime.timedelta(days = 2),
+            initiate_user = cls.user_list[1]
         )
 
         split_bill(cls.bill01,{
@@ -268,7 +270,7 @@ class SettleTest(TestCase):
             # update the state of the self.settle
             self.settle.update_state()
             
-            if is_all_tr_finished():
+            if self.settle.is_all_tr_finished():
                 # all is done, it would transformm to pcs
                 self.assertEquals(self.settle.state, 'PC')
             else:
@@ -295,7 +297,7 @@ class SettleTest(TestCase):
             # update the instance's state from database
             self.settle = Settle.objects.get(id = self.settle.id )
             
-            if is_all_tr_finished():
+            if self.settle.is_all_tr_finished():
                 # all is done, it would transformm to pcs
                 self.assertEquals(self.settle.state, 'PC')
             else:
@@ -341,10 +343,17 @@ class SettleTest(TestCase):
 
 
     def test_is_all_tr_finished(self):
-        self.assertEquals(is_all_tr_finished(),False)
+        self.assertEquals(self.settle.is_all_tr_finished(),False)
         for tr in BillTransation.objects.all():
             tr.set_paid()
-        self.assertEquals(is_all_tr_finished(),True)
+        self.assertEquals(self.settle.is_all_tr_finished(),True)
+        
+    def test_get_responsible_tr(self):
+        # test whether the settle can get what the 
+        # transaction it is responsible for
+        res_tr = self.settle.get_responsible_tr_range()
+        self.assertEqual(res_tr[0],0)
+        self.assertEqual(res_tr[1],8)
     
     def test_count_transactions(self):
         # count the first user's transactions 
@@ -413,8 +422,15 @@ class SettleTest(TestCase):
         # we should test whether all the total amount is correct
         # test whether the auto generate transaction of settle is correct
         # we should get 50,-5,-25,-25
+
+        # date all the bill and settle back 7 days
+        self.bill01.date -= datetime.timedelta(days = 7)
+        self.bill02.date -= datetime.timedelta(days = 7)
+        self.bill01.save()
+        self.bill02.save()
         self.settle.start_date =timezone.now()-datetime.timedelta(days = 7)
         self.settle.save() 
+        
         for tr in BillTransation.objects.all():
             # all user has paid their bill
             tr.set_paid()
@@ -446,10 +462,16 @@ class SettleTest(TestCase):
                 get_settle_tr(self.user004).cal_total() ,
                 Decimal("75.29")
             )
-    def test_cal_penaltys(self):
-        # we should test whether all the total amount is correct
-        # test whether the auto generate transaction of settle is correct
+    def test_set_paid_to_FN(self):
+        # test whether when all the people paid the settle
+        # the state of settle would goto FN
+        
         # we should get 50,-5,-25,-25
+        # date all the bill and settle back 7 days
+        self.bill01.date -= datetime.timedelta(days = 7)
+        self.bill02.date -= datetime.timedelta(days = 7)
+        self.bill01.save()
+        self.bill02.save()
         self.settle.start_date =timezone.now()-datetime.timedelta(days = 7)
         self.settle.save() 
         for tr in BillTransation.objects.all():
